@@ -1,12 +1,14 @@
-﻿import {
+import {
+  Legend,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
   Radar,
   RadarChart,
   ResponsiveContainer,
-  Legend
+  Tooltip
 } from 'recharts';
+import { getScoreTier } from '@/lib/student';
 
 interface SkillRadarChartProps {
   data: Array<{ category: string; team: number; ideal: number }>;
@@ -34,6 +36,14 @@ export const SkillRadarChart = ({ data }: SkillRadarChartProps) => (
         <PolarGrid stroke="rgba(148,163,184,0.25)" />
         <PolarRadiusAxis axisLine={false} tick={false} domain={[0, 25]} />
         <PolarAngleAxis dataKey="category" tick={<AxisTick />} />
+        <Tooltip
+          formatter={(value: number, name: string) => [`${value} (${getScoreTier(value)})`, name]}
+          contentStyle={{
+            background: '#0B1730',
+            border: '1px solid rgba(148,163,184,0.25)',
+            borderRadius: '12px'
+          }}
+        />
         <Radar dataKey="team" name="Your Team" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} />
         <Radar
           dataKey="ideal"

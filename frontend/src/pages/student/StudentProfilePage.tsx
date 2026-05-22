@@ -1,35 +1,104 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { BriefcaseBusiness, Link as LinkIcon, Upload } from 'lucide-react';
 import { PerformanceLineChart } from '@/components/charts';
 import { Avatar, Badge, Button, Card, ProgressBar, SkillChip, Tabs } from '@/components/ui';
 import * as api from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useParticipantStore } from '@/store/useParticipantStore';
 import { useTeamStore } from '@/store/useTeamStore';
-import type { Skill, SkillCategory, SkillLevel } from '@/types';
+import type { Participant, Skill, SkillCategory, SkillLevel } from '@/types';
 
 const levels: SkillLevel[] = ['beginner', 'intermediate', 'advanced', 'expert'];
 const categories: SkillCategory[] = ['frontend', 'backend', 'ml', 'security', 'devops', 'design', 'mobile', 'other'];
 
+const isValidLevel = (value: string): value is SkillLevel => levels.includes(value as SkillLevel);
+const isValidCategory = (value: string): value is SkillCategory => categories.includes(value as SkillCategory);
+
+const normalizeSkills = (value: unknown): Skill[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      if (!name) return null;
+      const level = typeof item.level === 'string' && isValidLevel(item.level) ? item.level : 'beginner';
+      const category = typeof item.category === 'string' && isValidCategory(item.category) ? item.category : 'other';
+      return { name, level, category };
+    })
+    .filter((item): item is Skill => Boolean(item));
+};
+
+const mergeUniqueSkills = (skills: Skill[]): Skill[] => {
+  const seen = new Set<string>();
+  return skills.filter((skill) => {
+    const key = `${skill.name.toLowerCase()}::${skill.category}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const resolveProgramTrack = (participant?: Participant): string => {
+  const university = (participant?.university ?? '').trim().toLowerCase();
+  if (university === 'full stack') return 'Full Stack Development';
+  if (university === 'computer science') return 'Computer Science';
+  if (university === 'cyber security') return 'Cyber Security';
+  if (university === 'machine learning') return 'Machine Learning';
+
+  const categoriesSet = new Set((participant?.skills ?? []).map((skill) => skill.category));
+  if (categoriesSet.has('ml')) return 'Machine Learning';
+  if (categoriesSet.has('security')) return 'Cyber Security';
+  if (categoriesSet.has('frontend') && categoriesSet.has('backend')) return 'Full Stack Development';
+  if (categoriesSet.has('frontend') && categoriesSet.has('ml')) return 'GenAI';
+  return 'Computer Science';
+};
+
+const resolveCohort = (participant?: Participant): string => {
+  const university = (participant?.university ?? '').trim().toLowerCase();
+  if (university === 'full stack') return 'BAK FS11';
+  return `Cohort ${participant?.graduationYear ?? 2026}`;
+};
+
 export const StudentProfilePage = () => {
-  const participant = useParticipantStore((state) => state.participants[0]);
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const participants = useParticipantStore((state) => state.participants);
+  const participant = useMemo<Participant | undefined>(
+    () => participants.find((item) => item.email === currentUser?.email) ?? participants[0],
+    [currentUser?.email, participants]
+  );
+  const participantId = participant?.id ?? 'anonymous';
   const updateParticipant = useParticipantStore((state) => state.updateParticipant);
-  const team = useTeamStore((state) => state.getTeamByParticipant(participant.id));
+  const saveMyProfile = useParticipantStore((state) => state.saveMyProfile);
+  const team = useTeamStore((state) => state.getTeamByParticipant(participantId));
+  const setMyTeam = useTeamStore((state) => state.setMyTeam);
   const [tab, setTab] = useState('skills');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState<'idle' | 'uploading' | 'extracting' | 'done'>('idle');
+  const [uploadError, setUploadError] = useState('');
+  const [profileSaveLoading, setProfileSaveLoading] = useState(false);
+  const [profileSaveMessage, setProfileSaveMessage] = useState('');
   const [draftSkill, setDraftSkill] = useState<Skill>({ name: '', level: 'beginner', category: 'frontend' });
+  const [bioDraft, setBioDraft] = useState('');
+  const [githubDraft, setGithubDraft] = useState('');
+  const [linkedinDraft, setLinkedinDraft] = useState('');
+  const extractedSkills = useMemo(() => normalizeSkills(participant?.cvExtractedSkills), [participant?.cvExtractedSkills]);
+  const summarySkills = useMemo(
+    () => mergeUniqueSkills([...(participant?.skills ?? []), ...extractedSkills]),
+    [participant?.skills, extractedSkills]
+  );
 
   const categorySummary = useMemo(() => {
     const map = new Map<SkillCategory, number>();
-    participant.skills.forEach((skill) => map.set(skill.category, (map.get(skill.category) ?? 0) + 1));
+    summarySkills.forEach((skill) => map.set(skill.category, (map.get(skill.category) ?? 0) + 1));
     return categories.map((category) => ({ category, count: map.get(category) ?? 0 }));
-  }, [participant.skills]);
+  }, [summarySkills]);
 
-  const strongest = [...participant.skills].slice(0, 3);
+  const strongest = [...summarySkills].slice(0, 3);
 
   const teamRole = useMemo(() => {
     if (!team) return 'Unassigned';
+    if (!participant) return 'Unassigned';
     if (team.captainId === participant.id) return 'Captain';
     const hasMl = participant.skills.some((skill) => skill.category === 'ml');
     const hasSecurity = participant.skills.some((skill) => skill.category === 'security');
@@ -43,45 +112,71 @@ export const StudentProfilePage = () => {
     if (hasFrontend) return 'Front-End Developer';
     if (hasBackend) return 'Back-End Developer';
     return 'Contributor';
-  }, [participant.id, participant.skills, team]);
+  }, [participant, participant?.id, participant?.skills, team]);
 
-  const track = useMemo(() => {
-    const categoriesSet = new Set(participant.skills.map((skill) => skill.category));
-    if (categoriesSet.has('ml')) return 'Machine Learning';
-    if (categoriesSet.has('security')) return 'Cyber Security';
-    if (categoriesSet.has('frontend') && categoriesSet.has('backend')) return 'Full Stack';
-    if (categoriesSet.has('frontend') && categoriesSet.has('ml')) return 'GenAI';
-    return 'Computer Science';
-  }, [participant.skills]);
+  const track = useMemo(() => resolveProgramTrack(participant), [participant]);
+  const cohort = useMemo(() => resolveCohort(participant), [participant]);
 
-  const cohort = `Cohort ${participant.graduationYear ?? 2026}`;
+  useEffect(() => {
+    setBioDraft(participant?.bio ?? '');
+    setGithubDraft(participant?.github ?? '');
+    setLinkedinDraft(participant?.linkedin ?? '');
+  }, [participant?.bio, participant?.github, participant?.linkedin]);
 
   const onDrop = async (files: File[]) => {
     const file = files[0];
     if (!file) return;
+    if (!participant) return;
+    setUploadError('');
 
-    setUploadStage('uploading');
-    const extracted = await api.extractSkillsFromCV(file, (progress) => {
-      setUploadProgress(progress.progress);
-      setUploadStage(progress.stage);
-    });
+    try {
+      setUploadStage('uploading');
+      const extracted = await api.extractSkillsFromCV(file, (progress) => {
+        setUploadProgress(progress.progress);
+        setUploadStage(progress.stage);
+      });
+      const normalizedExtractedSkills = normalizeSkills(extracted.participant.cvExtractedSkills);
 
-    updateParticipant(participant.id, {
-      cvUrl: extracted.cvUrl,
-      cvUploadedAt: extracted.cvUploadedAt,
-      cvExtractedSkills: extracted.cvExtractedSkills
-    });
-    setUploadStage('done');
+      updateParticipant(participant.id, {
+        cvUrl: extracted.participant.cvUrl,
+        cvUploadedAt: extracted.participant.cvUploadedAt,
+        cvExtractedSkills: normalizedExtractedSkills
+      });
+      if (extracted.team) setMyTeam(extracted.team);
+      setUploadStage('done');
+    } catch (error) {
+      setUploadStage('idle');
+      setUploadProgress(0);
+      setUploadError(error instanceof Error ? error.message : 'CV upload failed.');
+    }
   };
+
+  const saveProfile = async () => {
+    if (!participant) return;
+    setProfileSaveLoading(true);
+    setProfileSaveMessage('');
+    const saved = await saveMyProfile({
+      bio: bioDraft,
+      github: githubDraft,
+      linkedin: linkedinDraft
+    });
+    setProfileSaveLoading(false);
+    setProfileSaveMessage(saved ? 'Profile saved.' : 'Save failed. Please try again.');
+  };
+
+  if (!participant) {
+    return (
+      <Card>
+        <p className="text-sm text-slate-300">Loading profile...</p>
+      </Card>
+    );
+  }
 
   const dropzone = useDropzone({
     onDrop,
     multiple: false,
     accept: {
       'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'image/png': ['.png'],
-      'image/jpeg': ['.jpg', '.jpeg']
     }
   });
 
@@ -123,16 +218,22 @@ export const StudentProfilePage = () => {
         </div>
 
         <textarea
-          value={participant.bio ?? ''}
-          onChange={(event) => updateParticipant(participant.id, { bio: event.target.value })}
+          value={bioDraft}
+          onChange={(event) => {
+            setBioDraft(event.target.value);
+            setProfileSaveMessage('');
+          }}
           className="h-24 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200 outline-none"
         />
 
         <label className="text-xs text-slate-400">
           GitHub
           <input
-            value={participant.github ?? ''}
-            onChange={(event) => updateParticipant(participant.id, { github: event.target.value })}
+            value={githubDraft}
+            onChange={(event) => {
+              setGithubDraft(event.target.value);
+              setProfileSaveMessage('');
+            }}
             className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
           />
         </label>
@@ -140,11 +241,19 @@ export const StudentProfilePage = () => {
         <label className="text-xs text-slate-400">
           LinkedIn
           <input
-            value={participant.linkedin ?? ''}
-            onChange={(event) => updateParticipant(participant.id, { linkedin: event.target.value })}
+            value={linkedinDraft}
+            onChange={(event) => {
+              setLinkedinDraft(event.target.value);
+              setProfileSaveMessage('');
+            }}
             className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm"
           />
         </label>
+
+        <Button onClick={saveProfile} disabled={profileSaveLoading}>
+          {profileSaveLoading ? 'Saving...' : 'Save Profile'}
+        </Button>
+        {profileSaveMessage && <p className="text-xs text-slate-300">{profileSaveMessage}</p>}
       </Card>
 
       <Card>
@@ -163,7 +272,7 @@ export const StudentProfilePage = () => {
                   >
                     <input {...dropzone.getInputProps()} />
                     <Upload className="mx-auto mb-2 h-5 w-5 text-violet-300" />
-                    <p className="text-sm text-slate-200">Drag & drop CV (PDF/DOCX/JPG/PNG)</p>
+                    <p className="text-sm text-slate-200">Drag & drop CV (PDF)</p>
                   </div>
 
                   {uploadStage !== 'idle' && (
@@ -174,11 +283,14 @@ export const StudentProfilePage = () => {
                       <ProgressBar value={uploadProgress} />
                     </div>
                   )}
+                  {uploadError && (
+                    <p className="text-sm text-rose-300">{uploadError}</p>
+                  )}
 
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-slate-200">AI Extracted Skills</h4>
                     <div className="flex flex-wrap gap-2">
-                      {participant.cvExtractedSkills?.map((skill) => (
+                      {extractedSkills.map((skill) => (
                         <SkillChip key={`${skill.name}-${skill.category}`} label={skill.name} category={skill.category} />
                       ))}
                     </div>
@@ -273,7 +385,7 @@ export const StudentProfilePage = () => {
           <h4 className="mb-2 text-sm font-semibold text-slate-300">Top Skills</h4>
           <div className="flex flex-wrap gap-2">
             {strongest.map((skill) => (
-              <SkillChip key={skill.name} label={skill.name} category={skill.category} />
+              <SkillChip key={`${skill.name}-${skill.category}`} label={skill.name} category={skill.category} />
             ))}
           </div>
         </div>

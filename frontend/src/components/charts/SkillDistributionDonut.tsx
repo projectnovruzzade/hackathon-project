@@ -15,7 +15,15 @@ export const SkillDistributionDonut = ({ data }: SkillDistributionDonutProps) =>
             <Cell key={item.name} fill={colors[index % colors.length]} />
           ))}
         </Pie>
-        <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(148,163,184,0.2)' }} />
+        <Tooltip
+          contentStyle={{
+            background: '#0f172a',
+            border: '1px solid rgba(148,163,184,0.2)',
+            color: '#e2e8f0'
+          }}
+          itemStyle={{ color: '#e2e8f0' }}
+          labelStyle={{ color: '#94a3b8' }}
+        />
       </PieChart>
     </ResponsiveContainer>
   </div>

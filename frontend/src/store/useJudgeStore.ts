@@ -1,10 +1,14 @@
 import { create } from 'zustand';
-import { judges as seedJudges, scoreEntries as seedScoreEntries } from '@/lib/mockData';
+import * as api from '@/lib/api';
 import { SCORE_CRITERIA, type AggregatedScore, type Judge, type ScoreCriterion, type ScoreEntry } from '@/types';
 
 interface JudgeState {
   judges: Judge[];
   scoreEntries: ScoreEntry[];
+  loadAdminJudges: () => Promise<Judge[]>;
+  loadAdminScores: () => Promise<ScoreEntry[]>;
+  setJudges: (judges: Judge[]) => void;
+  setScoreEntries: (entries: ScoreEntry[]) => void;
   addJudge: (judge: Judge) => void;
   updateJudge: (id: string, updates: Partial<Judge>) => void;
   removeJudge: (id: string) => void;
@@ -28,8 +32,28 @@ const emptyAggregate: AggregatedScore = {
 };
 
 export const useJudgeStore = create<JudgeState>((set, get) => ({
-  judges: seedJudges,
-  scoreEntries: seedScoreEntries,
+  judges: [],
+  scoreEntries: [],
+  loadAdminJudges: async () => {
+    try {
+      const judges = await api.fetchAdminJudges();
+      set({ judges });
+      return judges;
+    } catch {
+      return [];
+    }
+  },
+  loadAdminScores: async () => {
+    try {
+      const entries = await api.fetchAdminScores();
+      set({ scoreEntries: entries });
+      return entries;
+    } catch {
+      return [];
+    }
+  },
+  setJudges: (judges) => set({ judges }),
+  setScoreEntries: (scoreEntries) => set({ scoreEntries }),
   addJudge: (judge) => set((state) => ({ judges: [judge, ...state.judges] })),
   updateJudge: (id, updates) =>
     set((state) => ({ judges: state.judges.map((judge) => (judge.id === id ? { ...judge, ...updates } : judge)) })),

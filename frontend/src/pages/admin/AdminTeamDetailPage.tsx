@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, ProgressBar, Tooltip } from '@/components/ui';
 import { PerformanceLineChart } from '@/components/charts';
 import { SCORE_CRITERIA, type ScoreCriterion } from '@/types';
@@ -25,6 +25,12 @@ export const AdminTeamDetailPage = () => {
   const [teamId, setTeamId] = useState(teams[0]?.id ?? '');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
+
+  useEffect(() => {
+    if (!teamId && teams.length) {
+      setTeamId(teams[0].id);
+    }
+  }, [teamId, teams]);
 
   const team = teams.find((item) => item.id === teamId) ?? teams[0];
   const eventId = team?.eventId;

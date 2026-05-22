@@ -12,11 +12,15 @@ import { AdminReportsPage } from '@/pages/admin/AdminReportsPage';
 import { AdminTeamDetailPage } from '@/pages/admin/AdminTeamDetailPage';
 import { AdminTeamsPage } from '@/pages/admin/AdminTeamsPage';
 import { StudentAnnouncementsPage } from '@/pages/student/StudentAnnouncementsPage';
+import { StudentCandidateProfilePage } from '@/pages/student/StudentCandidateProfilePage';
 import { StudentDashboardPage } from '@/pages/student/StudentDashboardPage';
+import { StudentHistoryHackathonsPage } from '@/pages/student/StudentHistoryHackathonsPage';
 import { StudentHackathonsPage } from '@/pages/student/StudentHackathonsPage';
 import { StudentProfilePage } from '@/pages/student/StudentProfilePage';
 import { StudentSupportPage } from '@/pages/student/StudentSupportPage';
+import { StudentTeamDirectoryDetailPage } from '@/pages/student/StudentTeamDirectoryDetailPage';
 import { StudentTeamPage } from '@/pages/student/StudentTeamPage';
+import { StudentTeamsPage } from '@/pages/student/StudentTeamsPage';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { UserRole } from '@/types';
 
@@ -56,6 +60,10 @@ export const App = () => (
         <Route path="dashboard" element={<StudentDashboardPage />} />
         <Route path="profile" element={<StudentProfilePage />} />
         <Route path="team" element={<StudentTeamPage />} />
+        <Route path="teams" element={<StudentTeamsPage />} />
+        <Route path="teams/:teamId" element={<StudentTeamDirectoryDetailPage />} />
+        <Route path="team/candidate/:participantId" element={<StudentCandidateProfilePage />} />
+        <Route path="history-hackathons" element={<StudentHistoryHackathonsPage />} />
         <Route path="hackathons" element={<StudentHackathonsPage />} />
         <Route path="announcements" element={<StudentAnnouncementsPage />} />
         <Route path="support" element={<StudentSupportPage />} />

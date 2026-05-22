@@ -3,6 +3,7 @@ import { Sparkles, Trophy } from 'lucide-react';
 import { ScoreBarsChart } from '@/components/charts';
 import { Badge, Button, Card } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useEventStore } from '@/store/useEventStore';
 import { useJudgeStore } from '@/store/useJudgeStore';
 import { useParticipantStore } from '@/store/useParticipantStore';
@@ -12,17 +13,23 @@ type ScopeFilter = 'internal' | 'external';
 type RightPanelTab = 'overview' | 'results';
 
 const isInternalEvent = (location: string) => {
-  const internalKeywords = ['ADA', 'BHOS', 'Khazar', 'UNEC', 'BSU'];
+  const internalKeywords = ['internal', 'ADA', 'BHOS', 'Khazar', 'UNEC', 'BSU'];
   return internalKeywords.some((keyword) => location.toLowerCase().includes(keyword.toLowerCase()));
 };
 
 export const StudentHackathonsPage = () => {
+  const currentUser = useAuthStore((state) => state.currentUser);
   const events = useEventStore((state) => state.events);
   const reviews = useTeamStore((state) => state.performanceReviews);
   const teams = useTeamStore((state) => state.teams);
   const getScoresForTeam = useJudgeStore((state) => state.getScoresForTeam);
   const judges = useJudgeStore((state) => state.judges);
-  const participant = useParticipantStore((state) => state.participants[0]);
+  const participants = useParticipantStore((state) => state.participants);
+  const participant = useMemo(
+    () => participants.find((item) => item.email === currentUser?.email) ?? participants[0],
+    [currentUser?.email, participants]
+  );
+  const participantId = participant?.id ?? '';
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('internal');
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id ?? '');
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('overview');
@@ -38,9 +45,12 @@ export const StudentHackathonsPage = () => {
 
   const selected = events.find((event) => event.id === selectedEventId) ?? filtered[0];
   const participatingTeams = teams.filter((team) => team.eventId === selected?.id);
-  const myTeam = teams.find((team) => team.members.some((member) => member.id === participant.id));
+  const myTeam = teams.find((team) => team.members.some((member) => member.id === participantId));
   const myScoreEntries = selected && myTeam?.id ? getScoresForTeam(myTeam.id, selected.id) : [];
   const myAggregatedReview = reviews.find((review) => review.eventId === selected?.id && review.teamId === myTeam?.id);
+  const eventReviews = reviews
+    .filter((review) => review.eventId === selected?.id)
+    .sort((a, b) => b.aggregatedScores.total - a.aggregatedScores.total);
 
   const judgeBreakdownData = myScoreEntries.map((entry) => ({
     name: judges.find((judge) => judge.id === entry.judgeId)?.name ?? entry.judgeId,
@@ -48,6 +58,14 @@ export const StudentHackathonsPage = () => {
     presentation: entry.scores.presentation ?? 0,
     innovation: entry.scores.innovation ?? 0,
     teamwork: entry.scores.teamwork ?? 0
+  }));
+
+  const fallbackJudgeBreakdownData = eventReviews.slice(0, 3).map((review, index) => ({
+    name: teams.find((team) => team.id === review.teamId)?.name ?? `Team ${index + 1}`,
+    technical: review.aggregatedScores.technical,
+    presentation: review.aggregatedScores.presentation,
+    innovation: review.aggregatedScores.innovation,
+    teamwork: review.aggregatedScores.teamwork
   }));
 
   const scorePercentages = myAggregatedReview
@@ -58,6 +76,14 @@ export const StudentHackathonsPage = () => {
         { label: 'Team Work', value: (myAggregatedReview.aggregatedScores.teamwork / 25) * 100 }
       ]
     : [];
+
+  if (!participant) {
+    return (
+      <Card>
+        <p className="text-sm text-slate-300">Loading profile...</p>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -86,7 +112,9 @@ export const StudentHackathonsPage = () => {
                     {event.status}
                   </Badge>
                 </div>
-                <p className="text-xs text-slate-400">{formatDate(event.startDate)} - {formatDate(event.endDate)}</p>
+                <p className="text-xs text-slate-400">
+                  {formatDate(event.startDate)} - {formatDate(event.endDate)}
+                </p>
                 <p className="mt-1 text-xs text-slate-500">{event.location}</p>
                 <p className="mt-2 text-sm text-slate-300">Prize: {event.prize}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
@@ -133,26 +161,26 @@ export const StudentHackathonsPage = () => {
 
             {rightPanelTab === 'overview' ? (
               <>
-            <h3 className="text-lg font-semibold text-slate-100">{selected.name}</h3>
-            <p className="text-sm text-slate-300">{selected.description}</p>
-            <div className="rounded-xl bg-white/5 p-3 text-xs text-slate-300">
-              Registration: {formatDate(selected.registrationDeadline)}
-              <br />
-              Start: {formatDate(selected.startDate)}
-              <br />
-              End: {formatDate(selected.endDate)}
-            </div>
+                <h3 className="text-lg font-semibold text-slate-100">{selected.name}</h3>
+                <p className="text-sm text-slate-300">{selected.description}</p>
+                <div className="rounded-xl bg-white/5 p-3 text-xs text-slate-300">
+                  Registration: {formatDate(selected.registrationDeadline)}
+                  <br />
+                  Start: {formatDate(selected.startDate)}
+                  <br />
+                  End: {formatDate(selected.endDate)}
+                </div>
 
-            <div>
-              <p className="mb-2 text-sm font-semibold text-slate-200">Participating teams</p>
-              <div className="space-y-2">
-                {participatingTeams.map((team) => (
-                  <div key={team.id} className="rounded-lg bg-white/5 p-2 text-sm text-slate-300">
-                    {team.name}
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-slate-200">Participating teams</p>
+                  <div className="space-y-2">
+                    {participatingTeams.map((team) => (
+                      <div key={team.id} className="rounded-lg bg-white/5 p-2 text-sm text-slate-300">
+                        {team.name}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
               </>
             ) : (
               <div className="space-y-4">
@@ -168,28 +196,25 @@ export const StudentHackathonsPage = () => {
                     <div>
                       <p className="mb-2 text-sm font-semibold text-slate-200">Leaderboard</p>
                       <div className="space-y-2">
-                        {reviews
-                          .filter((review) => review.eventId === selected.id)
-                          .sort((a, b) => b.aggregatedScores.total - a.aggregatedScores.total)
-                          .map((review, index) => (
-                            <div key={review.teamId} className="flex items-center justify-between rounded-lg bg-white/5 p-2 text-sm">
-                              <div className="flex items-center gap-2 text-slate-200">
-                                <span>{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '#'}</span>
-                                {teams.find((team) => team.id === review.teamId)?.name}
-                              </div>
-                              <span className="text-slate-300">{review.aggregatedScores.total.toFixed(1)}</span>
+                        {eventReviews.map((review, index) => (
+                          <div key={review.teamId} className="flex items-center justify-between rounded-lg bg-white/5 p-2 text-sm">
+                            <div className="flex items-center gap-2 text-slate-200">
+                              <span>{index + 1}.</span>
+                              {teams.find((team) => team.id === review.teamId)?.name}
                             </div>
-                          ))}
+                            <span className="text-slate-300">{review.aggregatedScores.total.toFixed(1)}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div>
                       <p className="mb-2 text-sm font-semibold text-slate-200">Judge Score Breakdown</p>
-                      {judgeBreakdownData.length ? (
-                        <ScoreBarsChart data={judgeBreakdownData} />
+                      {judgeBreakdownData.length || fallbackJudgeBreakdownData.length ? (
+                        <ScoreBarsChart data={judgeBreakdownData.length ? judgeBreakdownData : fallbackJudgeBreakdownData} />
                       ) : (
                         <p className="rounded-lg bg-white/5 p-3 text-sm text-slate-300">
-                          Your team does not have submitted judge scores for this event yet.
+                          Judge score analytics will appear once score data is available.
                         </p>
                       )}
                     </div>
@@ -204,7 +229,10 @@ export const StudentHackathonsPage = () => {
                               <span className="text-sm font-semibold text-slate-100">{item.value.toFixed(1)}%</span>
                             </div>
                             <div className="h-2 rounded-full bg-slate-800">
-                              <div className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500" style={{ width: `${Math.min(100, Math.max(0, item.value))}%` }} />
+                              <div
+                                className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-500"
+                                style={{ width: `${Math.min(100, Math.max(0, item.value))}%` }}
+                              />
                             </div>
                           </div>
                         ))}

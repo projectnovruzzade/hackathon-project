@@ -1,27 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Badge, Button } from '@/components/ui';
-import { faqs, supportTickets } from '@/lib/mockData';
+import * as api from '@/lib/api';
 import type { SupportTicket } from '@/types';
+
+const faqs: Array<{ q: string; a: string }> = [
+  { q: 'How do I join a team?', a: 'Upload your CV first, then use Team page options to join or invite members.' },
+  { q: 'Why can I not see candidate students?', a: 'Candidate recommendations unlock only after CV upload.' },
+  { q: 'Can I edit project repo link?', a: 'Yes, captain can update team project name and repository URL.' }
+];
 
 export const StudentSupportPage = () => {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(faqs[0]?.q ?? null);
   const [subject, setSubject] = useState('Technical Issue');
   const [message, setMessage] = useState('');
-  const [tickets, setTickets] = useState<SupportTicket[]>(supportTickets);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
 
-  const submit = () => {
+  useEffect(() => {
+    let active = true;
+    const run = async () => {
+      try {
+        const rows = await api.fetchSupportTickets();
+        if (active) setTickets(rows);
+      } catch {
+        if (active) setTickets([]);
+      }
+    };
+    run();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const submit = async () => {
     if (!message.trim()) return;
-    setTickets((prev) => [
-      {
-        id: `ticket-${Date.now()}`,
-        userId: 'p-1',
-        subject,
-        message,
-        status: 'open',
-        createdAt: new Date()
-      },
-      ...prev
-    ]);
+    await api.createSupportTicket(subject, message.trim());
+    const rows = await api.fetchSupportTickets();
+    setTickets(rows);
     setMessage('');
   };
 
@@ -65,7 +79,7 @@ export const StudentSupportPage = () => {
               placeholder="Describe your issue"
               className="h-32 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2"
             />
-            <Button className="w-full" onClick={submit}>Submit Ticket</Button>
+            <Button className="w-full" onClick={async () => submit()}>Submit Ticket</Button>
           </div>
         </Card>
       </div>

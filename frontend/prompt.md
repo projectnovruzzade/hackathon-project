@@ -1,5 +1,5 @@
 You are a senior frontend engineer. Build a complete, production-ready
-React + TypeScript web application called "TeamForge AI" with TWO
+React + TypeScript web application called "Joint Holbies" with TWO
 distinct user roles: Student Portal and Admin Panel.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

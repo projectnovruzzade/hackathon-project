@@ -3,14 +3,13 @@ import { Bolt, GraduationCap, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button, Card } from '@/components/ui';
-import { mockCredentials } from '@/lib/mockData';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const login = useAuthStore((state) => state.login);
-  const [email, setEmail] = useState(mockCredentials.student.email);
-  const [password, setPassword] = useState(mockCredentials.student.password);
+  const [email, setEmail] = useState('12730@holbertonstudents.com');
+  const [password, setPassword] = useState('password');
   const [selectedRole, setSelectedRole] = useState<'student' | 'admin'>('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,15 +20,15 @@ export const LoginPage = () => {
         id: 'student' as const,
         label: 'Student',
         icon: GraduationCap,
-        email: mockCredentials.student.email,
-        password: mockCredentials.student.password
+        email: '12730@holbertonstudents.com',
+        password: 'password'
       },
       {
         id: 'admin' as const,
         label: 'Admin',
         icon: Settings,
-        email: mockCredentials.admin.email,
-        password: mockCredentials.admin.password
+        email: 'admin@teamforge.az',
+        password: 'password'
       }
     ],
     []
@@ -68,7 +67,7 @@ export const LoginPage = () => {
             <div className="mx-auto mb-3 inline-flex rounded-2xl bg-violet-500/20 p-3">
               <Bolt className="h-7 w-7 text-violet-300" />
             </div>
-            <h1 className="text-3xl font-bold text-slate-100">TeamForge AI</h1>
+            <h1 className="text-3xl font-bold text-slate-100">Joint Holbies</h1>
             <p className="mt-1 text-sm text-slate-400">Hackathon Team Management Platform</p>
           </div>
 

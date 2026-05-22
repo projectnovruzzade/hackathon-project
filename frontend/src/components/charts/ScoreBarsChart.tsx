@@ -9,6 +9,7 @@ import {
   Legend
 } from 'recharts';
 import { useMemo } from 'react';
+import { getScoreTier } from '@/lib/student';
 
 interface ScoreBarsChartProps {
   data: Array<{
@@ -36,6 +37,7 @@ export const ScoreBarsChart = ({ data }: ScoreBarsChartProps) => {
           <YAxis stroke="#94A3B8" domain={[0, yMax]} />
           <Tooltip
             cursor={false}
+            formatter={(value: number) => [`${value} (${getScoreTier(value)})`, 'Score']}
             contentStyle={{
               background: '#0B1730',
               border: '1px solid rgba(148,163,184,0.25)',

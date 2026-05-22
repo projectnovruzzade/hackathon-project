@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { CalendarRange, MessageCircleWarning, Sparkles, Trophy, UserCheck, Users } from 'lucide-react';
 import { SkillDistributionDonut } from '@/components/charts';
 import { Button, Card, Modal, ProgressBar, StatCard } from '@/components/ui';
-import { activityFeed } from '@/lib/mockData';
+import { useAnnouncementStore } from '@/store/useAnnouncementStore';
 import { useEventStore } from '@/store/useEventStore';
 import { useJudgeStore } from '@/store/useJudgeStore';
 import { useParticipantStore } from '@/store/useParticipantStore';
@@ -13,9 +13,12 @@ export const AdminDashboardPage = () => {
   const teams = useTeamStore((state) => state.teams);
   const events = useEventStore((state) => state.events);
   const judges = useJudgeStore((state) => state.judges);
+  const announcements = useAnnouncementStore((state) => state.announcements);
   const [modal, setModal] = useState<string | null>(null);
 
-  const avgChemistry = Math.round(teams.reduce((sum, team) => sum + team.chemistryScore, 0) / teams.length);
+  const avgChemistry = teams.length
+    ? Math.round(teams.reduce((sum, team) => sum + team.chemistryScore, 0) / teams.length)
+    : 0;
 
   const skillDistribution = useMemo(() => {
     const map = new Map<string, number>();
@@ -26,6 +29,12 @@ export const AdminDashboardPage = () => {
   }, [participants]);
 
   const topTeams = [...teams].sort((a, b) => b.chemistryScore - a.chemistryScore).slice(0, 5);
+  const activityFeed = announcements.slice(0, 5).map((item) => ({
+    id: item.id,
+    actor: 'System',
+    action: item.title,
+    timestamp: item.createdAt
+  }));
 
   return (
     <div className="space-y-6">

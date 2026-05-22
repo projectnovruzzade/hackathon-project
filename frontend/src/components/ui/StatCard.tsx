@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card';
 
 interface StatCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   accent?: 'violet' | 'cyan';
 }
@@ -19,7 +19,9 @@ export const StatCard = ({ title, value, icon: Icon, accent = 'violet' }: StatCa
     <motion.div className="flex items-center justify-between" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <div>
         <p className="text-xs uppercase tracking-wide text-slate-400">{title}</p>
-        <p className="mt-1 text-2xl font-semibold text-slate-100">{value.toLocaleString()}</p>
+        <p className="mt-1 text-2xl font-semibold text-slate-100">
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </p>
       </div>
       <span className={`rounded-xl p-2 ${colorClass[accent]}`}>
         <Icon className="h-5 w-5" />

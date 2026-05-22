@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { Badge, Button, Card } from '@/components/ui';
 import { formatDate } from '@/lib/utils';
 import { useAnnouncementStore } from '@/store/useAnnouncementStore';
-import { useParticipantStore } from '@/store/useParticipantStore';
 
 const typeColor: Record<string, 'rose' | 'violet' | 'emerald' | 'slate'> = {
   urgent: 'rose',
@@ -12,8 +11,7 @@ const typeColor: Record<string, 'rose' | 'violet' | 'emerald' | 'slate'> = {
 };
 
 export const StudentAnnouncementsPage = () => {
-  const participant = useParticipantStore((state) => state.participants[0]);
-  const { announcements, markAsRead } = useAnnouncementStore();
+  const { announcements, markAsRead, markAllRead } = useAnnouncementStore();
   const [selectedId, setSelectedId] = useState(announcements[0]?.id ?? '');
 
   const sorted = useMemo(
@@ -28,13 +26,9 @@ export const StudentAnnouncementsPage = () => {
 
   const selected = sorted.find((item) => item.id === selectedId) ?? sorted[0];
 
-  const openAnnouncement = (id: string) => {
+  const openAnnouncement = async (id: string) => {
     setSelectedId(id);
-    markAsRead(id, participant.id);
-  };
-
-  const markAllRead = () => {
-    sorted.forEach((announcement) => markAsRead(announcement.id, participant.id));
+    await markAsRead(id, 'me');
   };
 
   return (
@@ -42,16 +36,16 @@ export const StudentAnnouncementsPage = () => {
       <Card>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-100">Announcements</h3>
-          <Button variant="ghost" onClick={markAllRead}>Mark all read</Button>
+          <Button variant="ghost" onClick={() => markAllRead()}>Mark all read</Button>
         </div>
         <div className="space-y-2">
           {sorted.map((announcement) => {
-            const unread = !announcement.readBy.includes(participant.id);
+            const unread = !announcement.readBy.includes('me');
             return (
               <button
                 key={announcement.id}
                 type="button"
-                onClick={() => openAnnouncement(announcement.id)}
+                onClick={async () => openAnnouncement(announcement.id)}
                 className={`w-full rounded-xl border p-3 text-left transition ${
                   selected?.id === announcement.id
                     ? 'border-violet-400/40 bg-violet-500/10'

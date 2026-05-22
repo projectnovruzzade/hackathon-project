@@ -89,6 +89,39 @@ export interface Team {
   projectName?: string;
 }
 
+export interface TeamDirectoryMember {
+  id: string;
+  name: string;
+  email: string;
+  roleInTeam: string;
+}
+
+export interface TeamDirectoryHackathon {
+  eventId: string;
+  eventName: string;
+  status: string;
+  teamName: string;
+}
+
+export interface TeamDirectoryItem {
+  id: string;
+  name: string;
+  status: string;
+  memberCount: number;
+  wantedRoles: string[];
+  event: {
+    id: string | null;
+    name: string;
+    status: string;
+  };
+  members: TeamDirectoryMember[];
+}
+
+export interface TeamDirectoryDetail extends TeamDirectoryItem {
+  hackathons: TeamDirectoryHackathon[];
+  isMember: boolean;
+}
+
 export interface Judge {
   id: string;
   name: string;

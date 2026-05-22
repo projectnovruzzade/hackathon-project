@@ -16,7 +16,7 @@ export const AdminTeamsPage = () => {
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [eventId, setEventId] = useState(events.find((event) => event.status !== 'completed')?.id ?? events[0].id);
+  const [eventId, setEventId] = useState(events.find((event) => event.status !== 'completed')?.id ?? events[0]?.id ?? '');
   const [teamSize, setTeamSize] = useState(4);
   const [avoidPrevious, setAvoidPrevious] = useState(true);
   const [diversifyExperience, setDiversifyExperience] = useState(true);
